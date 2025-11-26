@@ -14,6 +14,7 @@ const CARD_WIDTH = (width - 60) / 2;
 interface MovieCardProps {
   movie: Movie;
   onPress?: () => void;
+  isTrending?: boolean;
 }
 
 type RootStackParamList = {

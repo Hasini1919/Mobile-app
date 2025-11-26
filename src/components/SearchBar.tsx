@@ -6,10 +6,11 @@ import { useTheme } from '../context/ThemeContext';
 interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
+  onClear?: () => void;
   placeholder?: string;
 }
 
-export default function SearchBar({ value, onChangeText, placeholder = 'Search...' }: SearchBarProps) {
+export default function SearchBar({ value, onChangeText, onClear, placeholder = 'Search...' }: SearchBarProps) {
   const { theme: colors } = useTheme();
 
   return (
@@ -28,7 +29,10 @@ export default function SearchBar({ value, onChangeText, placeholder = 'Search..
           size={20} 
           color={colors.textSecondary} 
           style={styles.clearIcon}
-          onPress={() => onChangeText('')}
+          onPress={() => {
+            onChangeText('');
+            if (onClear) onClear();
+          }}
         />
       )}
     </View>
