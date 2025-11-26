@@ -1,61 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
+  ScrollView,
   Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
   Alert,
-  Animated,
-  SafeAreaView,
-  ImageBackground,
-  StatusBar,
-  Platform,
 } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import CustomText from '../components/CustomText';
-import { Movie, Genre } from '../types/movie';
+import { Movie } from '../types/movie';
 import { movieApi } from '../api/movieApi';
 import { favoritesStorage } from '../storage/favoritesStorage';
 import { ratingsStorage } from '../storage/ratingsStorage';
-import { LinearGradient } from 'expo-linear-gradient';
 
-const { width, height } = Dimensions.get('window');
-const POSTER_HEIGHT = height * 0.6;
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
+const { width } = Dimensions.get('window');
 
-type RootStackParamList = {
-  MovieDetails: { movieId: number };
+type RouteParams = {
+  MovieDetails: {
+    movieId: number;
+  };
 };
 
-type MovieDetailsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MovieDetails'>;
-type MovieDetailsRouteProp = RouteProp<RootStackParamList, 'MovieDetails'>;
-
-interface CastMember {
-  id: number;
-  name: string;
-  character: string;
-  profile_path: string | null;
-}
-
-interface MovieWithCast extends Omit<Movie, 'genres'> {
-  cast?: CastMember[];
-  genres?: (string | Genre)[];
-  release_date?: string;
-  vote_average?: number;
-  poster_path?: string;
-  backdrop_path?: string;
-}
-
-const MovieDetailsScreen: React.FC = () => {
+export default function MovieDetailsScreen() {
   const { theme: colors } = useTheme();
-  const route = useRoute<MovieDetailsRouteProp>();
-  const navigation = useNavigation<MovieDetailsScreenNavigationProp>();
-  const [movie, setMovie] = useState<MovieWithCast | null>(null);
+  const route = useRoute<RouteProp<RouteParams, 'MovieDetails'>>();
+  const navigation = useNavigation();
+  const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [userRating, setUserRating] = useState<number | null>(null);
@@ -133,13 +108,13 @@ const MovieDetailsScreen: React.FC = () => {
       marginTop: 16,
       marginBottom: 24,
     },
-    retryButton: {
+    backButton: {
       backgroundColor: colors.accent,
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 8,
     },
-    retryButtonText: {
+    backButtonText: {
       color: colors.text,
       fontSize: 16,
       fontWeight: 'bold',
@@ -162,10 +137,15 @@ const MovieDetailsScreen: React.FC = () => {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    poster: {
-      width: width,
-      height: POSTER_HEIGHT,
+    posterContainer: {
+      width: '100%',
+      aspectRatio: 2/3,
       backgroundColor: colors.surface,
+      overflow: 'hidden',
+    },
+    poster: {
+      width: '100%',
+      height: '100%',
     },
     content: {
       padding: 20,
@@ -211,7 +191,7 @@ const MovieDetailsScreen: React.FC = () => {
       padding: 16,
       borderRadius: 16,
       gap: 8,
-      shadowColor: '#000', 
+      shadowColor: '#000', // Changed from colors.shadow
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 4,
@@ -244,9 +224,7 @@ const MovieDetailsScreen: React.FC = () => {
     starButton: {
       padding: 4,
     },
-    starFilled: {
-      // Filled star
-    },
+    starFilled: {},
     yourRatingText: {
       fontSize: 14,
       color: colors.accent,
@@ -265,7 +243,7 @@ const MovieDetailsScreen: React.FC = () => {
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 20,
-      shadowColor: '#000',
+      shadowColor: '#000', // Changed from colors.shadow
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 3,
@@ -298,7 +276,7 @@ const MovieDetailsScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <CustomText style={styles.loadingText}>Loading movie details...</CustomText>
       </View>
     );
@@ -307,27 +285,17 @@ const MovieDetailsScreen: React.FC = () => {
   if (!movie) {
     return (
       <View style={styles.errorContainer}>
-        <CustomText style={styles.errorText}>Failed to load movie details</CustomText>
-        <TouchableOpacity style={styles.retryButton} onPress={loadMovieDetails}>
-          <CustomText style={styles.retryButtonText}>Retry</CustomText>
+        <Feather name="alert-circle" size={64} color={colors.error} />
+        <CustomText style={styles.errorText}>Movie not found</CustomText>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <CustomText style={styles.backButtonText}>Go Back</CustomText>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const getGenreName = (genre: string | Genre): string => {
-    if (!genre) return '';
-    if (typeof genre === 'string') return genre;
-    // Type guard to check if genre is a Genre object with a name property
-    if (typeof genre === 'object' && genre && 'name' in genre) {
-      return (genre as { name: string }).name;
-    }
-    return String(genre);
-  };
-
   return (
-    <View style={styles.container}>
-      <Animated.ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
@@ -339,25 +307,38 @@ const MovieDetailsScreen: React.FC = () => {
       </View>
 
       {/* Poster Image */}
-      <Image source={{ uri: movie.poster_path }} style={styles.poster} resizeMode="cover" />
+      <View style={styles.posterContainer}>
+        <Image 
+          source={{ 
+            uri: movie.posterPath 
+              ? `https://image.tmdb.org/t/p/w500${movie.posterPath}` 
+              : movie.poster || 'https://via.placeholder.com/500x750/3d3d3d/ffffff?text=No+Poster'
+          }} 
+          style={styles.poster}
+          resizeMode="cover"
+          onError={(error) => console.log('Image load error:', error.nativeEvent.error)}
+        />
+      </View>
 
       {/* Movie Details */}
       <View style={styles.content}>
         {/* Title and Year */}
         <CustomText style={styles.title}>{movie.title}</CustomText>
         <View style={styles.metaRow}>
-          <CustomText style={styles.year}>{movie.release_date?.split('-')[0]}</CustomText>
+          <CustomText style={styles.year}>{movie.releaseYear}</CustomText>
           <View style={styles.dot} />
-          <CustomText style={styles.duration}>{movie.runtime} min</CustomText>
+          <CustomText style={styles.duration}>{movie.duration} min</CustomText>
           <View style={styles.dot} />
-          <CustomText style={styles.language}>{movie.originalLanguage || 'N/A'}</CustomText>
+          <CustomText style={styles.language}>{movie.language}</CustomText>
         </View>
 
         {/* Rating */}
         <View style={styles.ratingContainer}>
           <View style={styles.tmdbRating}>
             <Feather name="star" size={20} color={colors.primary} />
-            <CustomText style={styles.ratingText}>{movie.vote_average?.toFixed(1)}/10</CustomText>
+            <CustomText style={styles.ratingText}>
+              {movie.voteAverage ? movie.voteAverage.toFixed(1) : '0.0'}/10
+            </CustomText>
             <CustomText style={styles.ratingLabel}>TMDB Rating</CustomText>
           </View>
         </View>
@@ -373,7 +354,7 @@ const MovieDetailsScreen: React.FC = () => {
                 style={styles.starButton}
               >
                 <Feather
-                  name={userRating && star <= userRating ? 'star' : 'star'}
+                  name="star"
                   size={32}
                   color={userRating && star <= userRating ? colors.accent : colors.textSecondary}
                   style={userRating && star <= userRating ? styles.starFilled : undefined}
@@ -394,7 +375,9 @@ const MovieDetailsScreen: React.FC = () => {
           <View style={styles.genresContainer}>
             {movie.genres?.map((genre: any, index) => (
               <View key={index} style={styles.genreChip}>
-                <CustomText style={styles.genreText}>{getGenreName(genre)}</CustomText>
+                <CustomText style={styles.genreText}>
+                  {typeof genre === 'string' ? genre : genre?.name || 'Unknown'}
+                </CustomText>
               </View>
             ))}
           </View>
@@ -403,7 +386,9 @@ const MovieDetailsScreen: React.FC = () => {
         {/* Description */}
         <View style={styles.section}>
           <CustomText style={styles.sectionTitle}>Overview</CustomText>
-          <CustomText style={styles.description}>{movie.overview || movie.description || 'No overview available.'}</CustomText>
+          <CustomText style={styles.description}>
+            {movie.overview || movie.description || 'No overview available.'}
+          </CustomText>
         </View>
 
         {/* Director */}
@@ -417,12 +402,11 @@ const MovieDetailsScreen: React.FC = () => {
           <CustomText style={styles.sectionTitle}>Cast</CustomText>
           {movie.cast?.map((actor: any, index) => (
             <CustomText key={index} style={styles.castText}>
-              • {actor?.name || actor || 'Unknown'}
+              • {typeof actor === 'string' ? actor : actor?.name || 'Unknown'}
             </CustomText>
           ))}
         </View>
       </View>
-    </Animated.ScrollView>
-  </View>
-);
+    </ScrollView>
+  );
 }
